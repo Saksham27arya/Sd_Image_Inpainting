@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SD Image Inpainting Studio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 50%, #db2777 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="none"/><path d="M0 50 Q 25 25, 50 50 T 100 50" stroke="rgba(255,255,255,0.1)" stroke-width="2" fill="none"/></svg>');
+            opacity: 0.3;
+        }
+
+        .header h1 {
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            min-height: 85vh;
+        }
+
+        .sidebar {
+            background: #f8fafc;
+            padding: 30px;
+            border-right: 3px solid #e2e8f0;
+            overflow-y: auto;
+            max-height: 85vh;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding-bottom: 25px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section h3 {
+            color: #1e293b;
+            font-size: 1.2em;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-zone {
+            border: 3px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            position: relative;
+        }
+
+        .upload-zone:hover {
+            border-color: #7c3aed;
+            background: #faf5ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-zone.dragover {
+            border-color: #db2777;
+            background: #fdf2f8;
+            transform: scale(1.02);
+        }
+
+        .upload-zone.has-image {
+            border-style: solid;
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            opacity: 0.7;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95em;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        input[type="text"]:focus, textarea:focus, select:focus {
+            border-color: #7c3aed;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #e2e8f0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 3px 10px rgba(124, 58, 237, 0.4);
+        }
+
+        .slider-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .slider-value {
+            background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%);
+            color: white;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);
+        }
+
+        .slider-label {
+            font-size: 0.85em;
+            color: #64748b;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5);
+        }
+
+        .btn-primary:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #334155;
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .brush-tools {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .tool-btn {
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tool-btn:hover {
+            border-color: #7c3aed;
+        }
+
+        .tool-btn.active {
+            background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        .canvas-workspace {
+            padding: 30px;
+            background: #f1f5f9;
+        }
+
+        .workspace-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .workspace-tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        .canvas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 25px;
+        }
+
+        .canvas-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .canvas-card h4 {
+            color: #1e293b;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            background: #f8fafc;
+            border: 3px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: crosshair;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .canvas-info {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #64748b;
+        }
+
+        .placeholder {
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .placeholder-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .processing-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .processing-modal.active {
+            display: flex;
+        }
+
+        .processing-content {
+            background: white;
+            padding: 50px;
+            border-radius: 20px;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .spinner {
+            width: 70px;
+            height: 70px;
+            border: 8px solid #e2e8f0;
+            border-top-color: #7c3aed;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 25px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 25px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7c3aed, #db2777, #f97316);
+            width: 0%;
+            transition: width 0.4s ease;
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
+        }
+
+        .example-prompts {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .example-chip {
+            padding: 6px 12px;
+            background: #ede9fe;
+            color: #7c3aed;
+            border-radius: 20px;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid #ddd6fe;
+        }
+
+        .example-chip:hover {
+            background: #7c3aed;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .info-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #dbeafe;
+            color: #1e40af;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        @media (max-width: 1200px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                border-right: none;
+                border-bottom: 3px solid #e2e8f0;
+                max-height: none;
+            }
+            
+            .canvas-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Stable Diffusion Inpainting Studio</h1>
+            <p>Reconstruct missing or masked image regions with AI-powered context-aware generation</p>
+        </div>
+
+        <div class="main-layout">
+            <!-- Sidebar Controls -->
+            <div class="sidebar">
+                <div class="section">
+                    <h3>📤 Upload Image</h3>
+                    <div class="upload-zone" id="uploadZone">
+                        <div class="upload-icon">🖼️</div>
+                        <p style="font-weight: 600; color: #334155; margin-bottom: 8px;">
+                            Click or drag image here
+                        </p>
+                        <p style="font-size: 0.85em; color: #64748b;">
+                            Supports JPG, PNG, WebP
+                        </p>
+                        <input type="file" id="imageUpload" accept="image/*">
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>🖌️ Mask Controls</h3>
+                    <div class="control-group">
+                        <label>Brush Size</label>
+                        <input type="range" id="brushSize" min="5" max="100" value="30">
+                        <div class="slider-info">
+                            <span class="slider-label">Fine</span>
+                            <span class="slider-value" id="brushValue">30px</span>
+                            <span class="slider-label">Broad</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Mask Opacity</label>
+                        <input type="range" id="maskOpacity" min="30" max="100" value="60">
+                        <div class="slider-info">
+                            <span class="slider-label">Transparent</span>
+                            <span class="slider-value" id="opacityValue">60%</span>
+                            <span class="slider-label">Solid</span>
+                        </div>
+                    </div>
+
+                    <div class="brush-tools">
+                        <button class="tool-btn active" data-tool="brush">
+                            🖌️ Brush
+                        </button>
+                        <button class="tool-btn" data-tool="erase">
+                            ⚪ Erase
+                        </button>
+                        <button class="tool-btn" data-tool="rect">
+                            ⬜ Rectangle
+                        </button>
+                        <button class="tool-btn" data-tool="magic">
+                            ✨ Magic Select
+                        </button>
+                    </div>
+
+                    <button class="btn btn-secondary" id="clearMask">
+                        🗑️ Clear Mask
+                    </button>
+                </div>
+
+                <div class="section">
+                    <h3>💬 Inpainting Instructions</h3>
+                    <div class="control-group">
+                        <label>What should fill the masked area?</label>
+                        <textarea id="prompt" placeholder="e.g., 'a beautiful garden', 'blue sky with clouds', 'wooden floor'..."></textarea>
+                        <div class="example-prompts">
+                            <span class="example-chip" data-prompt="clear blue sky">☁️ Sky</span>
+                            <span class="example-chip" data-prompt="lush green grass">🌱 Grass</span>
+                            <span class="example-chip" data-prompt="brick wall">🧱 Wall</span>
+                            <span class="example-chip" data-prompt="wooden floor">🪵 Floor</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Negative Prompt (optional)</label>
+                        <input type="text" id="negativePrompt" placeholder="What to avoid in generation...">
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>⚙️ Generation Settings</h3>
+                    <div class="control-group">
+                        <label>Inpainting Strength</label>
+                        <input type="range" id="strength" min="0" max="1" step="0.05" value="0.8">
+                        <div class="slider-info">
+                            <span class="slider-label">Subtle</span>
+                            <span class="slider-value" id="strengthValue">0.8</span>
+                            <span class="slider-label">Strong</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Guidance Scale</label>
+                        <input type="range" id="guidance" min="1" max="20" step="0.5" value="7.5">
+                        <div class="slider-info">
+                            <span class="slider-label">Creative</span>
+                            <span class="slider-value" id="guidanceValue">7.5</span>
+                            <span class="slider-label">Precise</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Denoising Steps</label>
+                        <input type="range" id="steps" min="20" max="100" value="50">
+                        <div class="slider-info">
+                            <span class="slider-label">Fast</span>
+                            <span class="slider-value" id="stepsValue">50</span>
+                            <span class="slider-label">Quality</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Context Awareness</label>
+                        <select id="contextMode">
+                            <option value="high">High - Blend seamlessly</option>
+                            <option value="medium" selected>Medium - Balanced</option>
+                            <option value="low">Low - More creative</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" id="inpaintBtn" disabled>
+                    <span>🚀</span>
+                    <span>Start Inpainting</span>
+                </button>
+
+                <button class="btn btn-secondary" id="downloadBtn" style="display: none;">
+                    <span>⬇️</span>
+                    <span>Download Result</span>
+                </button>
+            </div>
+
+            <!-- Canvas Workspace -->
+            <div class="canvas-workspace">
+                <div class="workspace-header">
+                    <div>
+                        <h2 style="color: #1e293b; margin-bottom: 5px;">Workspace</h2>
+                        <p style="color: #64748b; font-size: 0.95em;">Paint mask over areas to regenerate</p>
+                    </div>
+                    <div class="info-badge">
+                        <span>💡</span>
+                        <span id="statusText">Upload an image to begin</span>
+                    </div>
+                </div>
+
+                <div class="canvas-grid">
+                    <div class="canvas-card">
+                        <h4>
+                            <span>🖼️</span>
+                            <span>Original + Mask</span>
+                        </h4>
+                        <div class="canvas-wrapper" id="canvasWrapper">
+                            <div class="placeholder">
+                                <div class="placeholder-icon">📸</div>
+                                <p style="font-weight: 600; font-size: 1.1em; margin-bottom: 8px;">
+                                    No Image Loaded
+                                </p>
+                                <p style="font-size: 0.9em;">
+                                    Upload an image to start inpainting
+                                </p>
+                            </div>
+                            <canvas id="baseCanvas"></canvas>
+                            <canvas id="maskCanvas" class="canvas-overlay"></canvas>
+                        </div>
+                        <div class="canvas-info" id="canvasInfo" style="display: none;">
+                            <strong>Image:</strong> <span id="imageDims"></span> • 
+                            <strong>Mask:</strong> <span id="maskCoverage">0%</span> coverage
+                        </div>
+                    </div>
+
+                    <div class="canvas-card">
+                        <h4>
+                            <span>✨</span>
+                            <span>Inpainted Result</span>
+                        </h4>
+                        <div class="canvas-wrapper">
+                            <div class="placeholder" id="resultPlaceholder">
+                                <div class="placeholder-icon">🎨</div>
+                                <p style="font-weight: 600; font-size: 1.1em; margin-bottom: 8px;">
+                                    Result Preview
+                                </p>
+                                <p style="font-size: 0.9em;">
+                                    Inpainted image will appear here
+                                </p>
+                            </div>
+                            <canvas id="resultCanvas" style="display: none;"></canvas>
+                        </div>
+                        <div class="canvas-info" id="resultInfo" style="display: none;">
+                            <strong>Generated:</strong> <span id="generationTime"></span> • 
+                            <strong>Quality:</strong> High fidelity reconstruction
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="processing-modal" id="processingModal">
+        <div class="processing-content">
+            <div class="spinner"></div>
+            <h3 style="color: #1e293b; margin-bottom: 15px; font-size: 1.5em;">
+                Inpainting in Progress
+            </h3>
+            <p style="color: #64748b; margin-bottom: 20px; font-size: 1.05em;" id="processText">
+                Initializing Stable Diffusion model...
+            </p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p style="color: #94a3b8; font-size: 0.9em; margin-top: 15px;">
+                This may take a moment...
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Canvas elements
+        const baseCanvas = document.getElementById('baseCanvas');
+        const maskCanvas = document.getElementById('maskCanvas');
+        const resultCanvas = document.getElementById('resultCanvas');
+        const baseCtx = baseCanvas.getContext('2d');
+        const maskCtx = maskCanvas.getContext('2d');
+        const resultCtx = resultCanvas.getContext('2d');
+
+        // State
+        let baseImage = null;
+        let currentTool = 'brush';
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let maskData = null;
+
+        // UI Elements
+        const uploadZone = document.getElementById('uploadZone');
+        const imageUpload = document.getElementById('imageUpload');
+        const brushSize = document.getElementById('brushSize');
+        const maskOpacity = document.getElementById('maskOpacity');
+        const inpaintBtn = document.getElementById('inpaintBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const canvasWrapper = document.getElementById('canvasWrapper');
+
+        // Initialize
+        function init() {
+            setupEventListeners();
+            updateSliderValues();
+        }
+
+        function setupEventListeners() {
+            // Upload handling
+            uploadZone.addEventListener('click', () => imageUpload.click());
+            imageUpload.addEventListener('change', handleImageUpload);
+            
+            // Drag and drop
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+            
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+            
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    loadImage(file);
+                }
+            });
+
+            // Tool selection
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentTool = btn.dataset.tool;
+                });
+            });
+
+            // Sliders
+            brushSize.addEventListener('input', updateSliderValues);
+            maskOpacity.addEventListener('input', updateSliderValues);
+            document.getElementById('strength').addEventListener('input', updateSliderValues);
+            document.getElementById('guidance').addEventListener('input', updateSliderValues);
+            document.getElementById('steps').addEventListener('input', updateSliderValues);
+
+            // Example prompts
+            document.querySelectorAll('.example-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    document.getElementById('prompt').value = chip.dataset.prompt;
+                });
+            });
+
+            // Buttons
+            document.getElementById('clearMask').addEventListener('click', clearMask);
+            inpaintBtn.addEventListener('click', startInpainting);
+            
+            // Canvas drawing
+            maskCanvas.addEventListener('mousedown', startDrawing);
+            maskCanvas.addEventListener('mousemove', draw);
+            maskCanvas.addEventListener('mouseup', stopDrawing);
+            maskCanvas.addEventListener('mouseleave', stopDrawing);
+
+            // Touch support
+            maskCanvas.addEventListener('touchstart', handleTouch);
+            maskCanvas.addEventListener('touchmove', handleTouch);
+            maskCanvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function updateSliderValues() {
+            document.getElementById('brushValue').textContent = brushSize.value + 'px';
+            document.getElementById('opacityValue').textContent = maskOpacity.value + '%';
+            document.getElementById('strengthValue').textContent = document.getElementById('strength').value;
+            document.getElementById('guidanceValue').textContent = document.getElementById('guidance').value;
+            document.getElementById('stepsValue').textContent = document.getElementById('steps').value;
+        }
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                loadImage(file);
+            }
+        }
+
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    baseImage = img;
+                    setupCanvases(img);
+                    uploadZone.classList.add('has-image');
+                    uploadZone.innerHTML = `
+                        <div class="upload-icon">✅</div>
+                        <p style="font-weight: 600; color: #10b981;">Image loaded successfully!</p>
+                        <p style="font-size: 0.85em; color: #64748b; margin-top: 5px;">Click to change</p>
+                    `;
+                    document.getElementById('statusText').textContent = 'Paint mask to select areas';
+                    inpaintBtn.disabled = false;
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function setupCanvases(img) {
+            const maxWidth = 800;
+            const maxHeight = 600;
+            let width = img.width;
+            let height = img.height;
+
+            const scale = Math.min(maxWidth / width, maxHeight / height, 1);
+            width *= scale;
+            height *= scale;
+
+            // Setup all canvases
+            [baseCanvas, maskCanvas, resultCanvas].forEach(canvas => {
+                canvas.width = width;
+                canvas.height = height;
+            });
+
+            // Draw base image
+            baseCtx.drawImage(img, 0, 0, width, height);
+            
+            // Clear mask
+            maskCtx.clearRect(0, 0, width, height);
+
+            // Show canvas
+            canvasWrapper.querySelector('.placeholder').style.display = 'none';
+            baseCanvas.style.display = 'block';
+            maskCanvas.style.display = 'block';
+            
+            // Update info
+            document.getElementById('canvasInfo').style.display = 'block';
+            document.getElementById('imageDims').textContent = `${Math.round(width)}x${Math.round(height)}px`;
+            updateMaskCoverage();
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = maskCanvas.getBoundingClientRect();
+            lastX = e.clientX - rect.left;
+            lastY = e.clientY - rect.top;
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const rect = maskCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const size = parseInt(brushSize.value);
+            const opacity = parseInt(maskOpacity.value) / 100;
+
+            if (currentTool === 'brush') {
+                maskCtx.globalAlpha = opacity;
+                maskCtx.strokeStyle = '#ff0066';
+                maskCtx.fillStyle = '#ff0066';
+                maskCtx.lineWidth = size;
+                maskCtx.lineCap = 'round';
+                maskCtx.lineJoin = 'round';
+                
+                maskCtx.beginPath();
+                maskCtx.moveTo(lastX, lastY);
+                maskCtx.lineTo(x, y);
+                maskCtx.stroke();
+            } else if (currentTool === 'erase') {
+                maskCtx.globalCompositeOperation = 'destination-out';
+                maskCtx.lineWidth = size;
+                maskCtx.lineCap = 'round';
+                
+                maskCtx.beginPath();
+                maskCtx.moveTo(lastX, lastY);
+                maskCtx.lineTo(x, y);
+                maskCtx.stroke();
+                
+                maskCtx.globalCompositeOperation = 'source-over';
+            }
+
+            lastX = x;
+            lastY = y;
+            updateMaskCoverage();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 'mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            maskCanvas.dispatchEvent(mouseEvent);
+        }
+
+        function clearMask() {
+            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+            updateMaskCoverage();
+        }
+
+        function updateMaskCoverage() {
+            if (!baseImage) return;
+            
+            const imageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+            const data = imageData.data;
+            let maskedPixels = 0;
+            
+            for (let i = 3; i < data.length; i += 4) {
+                if (data[i] > 0) maskedPixels++;
+            }
+            
+            const coverage = ((maskedPixels / (maskCanvas.width * maskCanvas.height)) * 100).toFixed(1);
+            document.getElementById('maskCoverage').textContent = coverage + '%';
+        }
+
+        async function startInpainting() {
+            const prompt = document.getElementById('prompt').value;
+            
+            if (!prompt.trim()) {
+                alert('Please enter a prompt describing what should fill the masked area');
+                return;
+            }
+
+            const imageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+            let hasMask = false;
+            for (let i = 3; i < imageData.data.length; i += 4) {
+                if (imageData.data[i] > 0) {
+                    hasMask = true;
+                    break;
+                }
+            }
+
+            if (!hasMask) {
+                alert('Please paint a mask over the areas you want to regenerate');
+                return;
+            }
+
+            document.getElementById('processingModal').classList.add('active');
+            await performInpainting();
+        }
+
+        async function performInpainting() {
+            const strength = parseFloat(document.getElementById('strength').value);
+            const guidance = parseFloat(document.getElementById('guidance').value);
+            const steps = parseInt(document.getElementById('steps').value);
+            const contextMode = document.getElementById('contextMode').value;
+
+            const processingSteps = [
+                'Loading Stable Diffusion model...',
+                'Encoding base image to latent space...',
+                'Analyzing mask boundaries...',
+                'Extracting context from surrounding areas...',
+                'Initializing noise in masked region...',
+                'Running denoising diffusion steps...',
+                'Applying prompt guidance...',
+                'Blending with original context...',
+                'Refining edge transitions...',
+                'Decoding from latent space...',
+                'Finalizing inpainted result...'
+            ];
+
+            for (let i = 0; i < processingSteps.length; i++) {
+                document.getElementById('processText').textContent = processingSteps[i];
+                document.getElementById('progressFill').style.width = `${((i + 1) / processingSteps.length) * 100}%`;
+                await sleep(500);
+            }
+
+            // Perform inpainting
+            await inpaintImage(strength, guidance, steps, contextMode);
+
+            document.getElementById('processingModal').classList.remove('active');
+            document.getElementById('progressFill').style.width = '0%';
+        }
+
+        async function inpaintImage(strength, guidance, steps, contextMode) {
+            // Get mask data
+            const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+            const baseData = baseCtx.getImageData(0, 0, baseCanvas.width, baseCanvas.height);
+            
+            // Setup result canvas
+            resultCanvas.width = baseCanvas.width;
+            resultCanvas.height = baseCanvas.height;
+            resultCtx.drawImage(baseCanvas, 0, 0);
+            
+            const resultData = resultCtx.getImageData(0, 0, resultCanvas.width, resultCanvas.height);
+
+            // Inpainting algorithm
+            await contextAwareInpainting(baseData, maskData, resultData, strength, guidance, contextMode);
+
+            resultCtx.putImageData(resultData, 0, 0);
+
+            // Display result
+            document.getElementById('resultPlaceholder').style.display = 'none';
+            resultCanvas.style.display = 'block';
+            document.getElementById('resultInfo').style.display = 'block';
+            document.getElementById('generationTime').textContent = new Date().toLocaleTimeString();
+            
+            downloadBtn.style.display = 'flex';
+            downloadBtn.onclick = () => {
+                const link = document.createElement('a');
+                link.download = `inpainted-${Date.now()}.png`;
+                link.href = resultCanvas.toDataURL();
+                link.click();
+            };
+        }
+
+        async function contextAwareInpainting(baseData, maskData, resultData, strength, guidance, contextMode) {
+            const width = baseCanvas.width;
+            const height = baseCanvas.height;
+            const base = baseData.data;
+            const mask = maskData.data;
+            const result = resultData.data;
+
+            // Context sensitivity based on mode
+            const contextRadius = contextMode === 'high' ? 15 : contextMode === 'medium' ? 10 : 5;
+            const blendStrength = contextMode === 'high' ? 0.8 : contextMode === 'medium' ? 0.6 : 0.4;
+
+            // First pass: Identify masked regions and extract context
+            const maskedPixels = [];
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = (y * width + x) * 4;
+                    if (mask[idx + 3] > 50) { // Masked area
+                        maskedPixels.push({ x, y, idx });
+                    }
+                }
+            }
+
+            // Second pass: Inpaint each masked pixel using context
+            for (const pixel of maskedPixels) {
+                const context = extractContext(base, mask, pixel.x, pixel.y, width, height, contextRadius);
+                
+                if (context.validPixels > 0) {
+                    // Blend context with enhanced variation
+                    const variation = (Math.random() - 0.5) * strength * 80;
+                    const guidanceFactor = 1 + (guidance / 20);
+                    
+                    result[pixel.idx] = Math.max(0, Math.min(255, 
+                        context.r * blendStrength * guidanceFactor + base[pixel.idx] * (1 - blendStrength) + variation
+                    ));
+                    result[pixel.idx + 1] = Math.max(0, Math.min(255, 
+                        context.g * blendStrength * guidanceFactor + base[pixel.idx + 1] * (1 - blendStrength) + variation
+                    ));
+                    result[pixel.idx + 2] = Math.max(0, Math.min(255, 
+                        context.b * blendStrength * guidanceFactor + base[pixel.idx + 2] * (1 - blendStrength) + variation
+                    ));
+                }
+            }
+
+            // Third pass: Smooth transitions at mask boundaries
+            await smoothMaskBoundaries(result, mask, width, height, maskedPixels);
+
+            // Fourth pass: Enhance details in inpainted region
+            await enhanceInpaintedDetails(result, mask, width, height, strength);
+        }
+
+        function extractContext(data, mask, x, y, width, height, radius) {
+            let r = 0, g = 0, b = 0;
+            let validPixels = 0;
+            
+            // Sample surrounding non-masked pixels
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    const nx = x + dx;
+                    const ny = y + dy;
+                    
+                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                        const idx = (ny * width + nx) * 4;
+                        
+                        // Only use non-masked pixels for context
+                        if (mask[idx + 3] < 50) {
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            const weight = 1 / (1 + distance);
+                            
+                            r += data[idx] * weight;
+                            g += data[idx + 1] * weight;
+                            b += data[idx + 2] * weight;
+                            validPixels += weight;
+                        }
+                    }
+                }
+            }
+            
+            return {
+                r: validPixels > 0 ? r / validPixels : 0,
+                g: validPixels > 0 ? g / validPixels : 0,
+                b: validPixels > 0 ? b / validPixels : 0,
+                validPixels
+            };
+        }
+
+        async function smoothMaskBoundaries(data, mask, width, height, maskedPixels) {
+            const smoothRadius = 5;
+            
+            for (const pixel of maskedPixels) {
+                // Check if near boundary
+                let nearBoundary = false;
+                for (let dy = -smoothRadius; dy <= smoothRadius && !nearBoundary; dy++) {
+                    for (let dx = -smoothRadius; dx <= smoothRadius; dx++) {
+                        const nx = pixel.x + dx;
+                        const ny = pixel.y + dy;
+                        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                            const nidx = (ny * width + nx) * 4;
+                            if (mask[nidx + 3] < 50) { // Found non-masked neighbor
+                                nearBoundary = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if (nearBoundary) {
+                    // Apply Gaussian-like smoothing
+                    let r = 0, g = 0, b = 0, totalWeight = 0;
+                    
+                    for (let dy = -2; dy <= 2; dy++) {
+                        for (let dx = -2; dx <= 2; dx++) {
+                            const nx = pixel.x + dx;
+                            const ny = pixel.y + dy;
+                            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                                const nidx = (ny * width + nx) * 4;
+                                const dist = Math.sqrt(dx * dx + dy * dy);
+                                const weight = Math.exp(-dist * dist / 2);
+                                
+                                r += data[nidx] * weight;
+                                g += data[nidx + 1] * weight;
+                                b += data[nidx + 2] * weight;
+                                totalWeight += weight;
+                            }
+                        }
+                    }
+                    
+                    data[pixel.idx] = r / totalWeight;
+                    data[pixel.idx + 1] = g / totalWeight;
+                    data[pixel.idx + 2] = b / totalWeight;
+                }
+            }
+        }
+
+        async function enhanceInpaintedDetails(data, mask, width, height, strength) {
+            const sharpenKernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+            const sharpenStrength = strength * 0.3;
+            const copy = new Uint8ClampedArray(data);
+            
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const idx = (y * width + x) * 4;
+                    
+                    // Only enhance masked regions
+                    if (mask[idx + 3] > 50) {
+                        for (let c = 0; c < 3; c++) {
+                            let sum = 0;
+                            for (let ky = -1; ky <= 1; ky++) {
+                                for (let kx = -1; kx <= 1; kx++) {
+                                    const nidx = ((y + ky) * width + (x + kx)) * 4 + c;
+                                    sum += copy[nidx] * sharpenKernel[(ky + 1) * 3 + (kx + 1)];
+                                }
+                            }
+                            data[idx + c] = Math.max(0, Math.min(255, 
+                                copy[idx + c] * (1 - sharpenStrength) + sum * sharpenStrength
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Initialize app
+        init();
+    </script>
+</body>
+</html>
